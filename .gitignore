@@ -1,0 +1,37 @@
+# Secrets and local config
+.env
+config.ini
+config.local
+*.key
+secrets/
+
+# GNAT / GPRbuild artifacts
+obj/
+lib/
+exec/
+examples/obj/
+examples/examples/
+*.ali
+*.o
+*.a
+*.lexch
+*.bexch
+*.o.bak
+*.ali.bak
+
+# Alire internal cache (keep alire.toml and alire.lock tracked)
+alire/build_hash_inputs
+alire/flags/
+alire/settings.toml
+alire/*.prev
+
+# Alire-generated config (do not edit by hand)
+/config/langchain4a_config.ads
+/config/langchain4a_config.gpr
+/config/langchain4a_config.h
+
+# Editor / OS cruft
+*.swp
+*.swo
+*~
+.DS_Store

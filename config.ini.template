@@ -1,0 +1,40 @@
+# Langchain4a Configuration File
+# Copy this file to config.ini (or use .env instead)
+# DO NOT commit config.ini to version control - it should contain your API key
+
+# Provider: "openrouter" or "openai"
+provider = openrouter
+
+# =========================================
+# OpenRouter settings
+# =========================================
+openrouter_endpoint = https://openrouter.ai/api/v1/chat/completions
+openrouter_model = openai/gpt-3.5-turbo
+openrouter_temperature = 0.7
+openrouter_max_tokens = 1024
+openrouter_site_url = https://your-app.example.com
+openrouter_app_name = YourAppName
+
+# =========================================
+# OpenAI settings
+# =========================================
+openai_endpoint = https://api.openai.com/v1/chat/completions
+openai_model = gpt-3.5-turbo
+openai_temperature = 0.7
+openai_max_tokens = 1024
+
+# =========================================
+# Proxy settings (shared)
+# =========================================
+proxy_mode = socks5
+proxy_host = 127.0.0.1
+proxy_port = 1080
+proxy_user = your-proxy-username
+proxy_pass = your-proxy-password
+
+# =========================================
+# API Key Security:
+# Option 1: Set OPENROUTER_API_KEY / OPENAI_API_KEY env var (RECOMMENDED)
+# Option 2: Create a separate file 'config.local' with:
+#   api_key = your-actual-api-key-here
+#   This file is gitignored and never committed.

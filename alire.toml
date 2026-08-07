@@ -1,0 +1,14 @@
+name = "langchain4a"
+description = "A LangChain-inspired library for LLM-powered Ada apps"
+version = "0.1.0"
+
+authors = ["Your Name"]
+maintainers = ["Your Name <your.email@example.com>"]
+licenses = "MIT"
+tags = ["llm", "ai", "langchain", "chat"]
+website = "https://github.com/yourusername/langchain4a"
+
+executables = []
+
+[[depends-on]]
+aws = "^24.0.0"
