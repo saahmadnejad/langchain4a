@@ -1,7 +1,7 @@
---  HTTP client with SOCKS5 proxy and TLS support
+--  HTTP client with SOCKS5 proxy and TLS support.
+--  JSON extraction utilities live in Langchain4a.Net.JSON.
 
 with Ada.Strings.Fixed;
-with Ada.Strings.Maps;
 with GNAT.Sockets;
 with Interfaces.C;
 with Interfaces.C.Strings;
@@ -96,10 +96,10 @@ package body Langchain4a.Net is
             Result.Port := 80;
          end if;
          Result.Path := To_Unbounded_String ("/");
-      end if;
+       end if;
 
-      return Result;
-   end Parse_URL;
+       return Result;
+    end Parse_URL;
 
     -------------------------
     -- Chunked decoding   --
@@ -159,125 +159,6 @@ package body Langchain4a.Net is
 
        return To_String (Result);
     end DeChunk;
-
-    -------------------------
-    -- JSON extraction    --
-    -------------------------
-
-    function Find_Key (JSON, Key : String) return Natural is
-       Search : constant String := '"' & Key & """:";
-       Pos    : Natural := Fixed.Index (JSON, Search);
-    begin
-       while Pos > 0 loop
-          --  Ensure the key is properly bounded: it must not be part of
-          --  a longer identifier (e.g. "my_content").  In valid JSON a key
-          --  is preceded by '{', '[' or ',', never by a letter or '"'.
-          if Pos = 1 or else JSON (Pos - 1) in '{' | '[' | ',' | ' ' | ASCII.HT | ASCII.LF | ASCII.CR then
-             return Pos + Search'Length;
-          end if;
-          Pos := Fixed.Index (JSON, Search, Pos + 1);
-       end loop;
-       return 0;
-    end Find_Key;
-
-    function Extract_Json_String (JSON, Key : String) return String is
-       Value_Pos : constant Natural := Find_Key (JSON, Key);
-    begin
-       if Value_Pos = 0 or else Value_Pos > JSON'Last then
-          return "";
-       end if;
-
-       declare
-          Rest_Str : constant String := JSON (Value_Pos .. JSON'Last);
-          Rest     : String (1 .. Rest_Str'Length);
-          S_Pos    : Natural := 1;
-       begin
-          Rest := Rest_Str;
-
-          while S_Pos <= Rest'Length
-            and then Rest (S_Pos) in ' ' | ASCII.HT | ASCII.LF | ASCII.CR
-          loop
-             S_Pos := S_Pos + 1;
-          end loop;
-
-          if S_Pos > Rest'Length or else Rest (S_Pos) /= '"' then
-             return "";
-          end if;
-
-         S_Pos := S_Pos + 1;
-         declare
-            Result  : Unbounded_String;
-            Escaped : Boolean := False;
-         begin
-            while S_Pos <= Rest'Length loop
-               if Escaped then
-                  case Rest (S_Pos) is
-                     when '"'  => Append (Result, '"');
-                     when '\' => Append (Result, '\');
-                     when '/'  => Append (Result, '/');
-                     when 'n'  => Append (Result, ASCII.LF);
-                     when 't'  => Append (Result, ASCII.HT);
-                     when 'r'  => Append (Result, ASCII.CR);
-                     when others => Append (Result, Rest (S_Pos));
-                  end case;
-                  Escaped := False;
-               elsif Rest (S_Pos) = '\' then
-                  Escaped := True;
-               elsif Rest (S_Pos) = '"' then
-                  exit;
-               else
-                  Append (Result, Rest (S_Pos));
-               end if;
-               S_Pos := S_Pos + 1;
-            end loop;
-            return To_String (Result);
-         end;
-      end;
-   end Extract_Json_String;
-
-   function Extract_Json_Integer (JSON, Key : String) return Natural is
-      Value_Pos : constant Natural := Find_Key (JSON, Key);
-   begin
-      if Value_Pos = 0 or else Value_Pos > JSON'Last then
-         return 0;
-      end if;
-
-       declare
-          Rest_Str : constant String := JSON (Value_Pos .. JSON'Last);
-          Rest     : String (1 .. Rest_Str'Length);
-          S_Pos    : Natural := 1;
-       begin
-          Rest := Rest_Str;
-
-          while S_Pos <= Rest'Length
-            and then Rest (S_Pos) in ' ' | ASCII.HT | ASCII.LF | ASCII.CR
-          loop
-             S_Pos := S_Pos + 1;
-          end loop;
-
-         if S_Pos > Rest'Length then
-            return 0;
-         end if;
-
-         declare
-            Num_Start : constant Natural := S_Pos;
-            Num_End   : Natural := S_Pos;
-         begin
-            while Num_End <= Rest'Length
-              and then Rest (Num_End) in '0' .. '9'
-            loop
-               Num_End := Num_End + 1;
-            end loop;
-            Num_End := Num_End - 1;
-
-            if Num_End >= Num_Start then
-               return Natural (Integer'Value (Rest (Num_Start .. Num_End)));
-            else
-               return 0;
-            end if;
-         end;
-      end;
-   end Extract_Json_Integer;
 
     -------------------------
     -- SOCKS5 support     --
@@ -370,21 +251,21 @@ package body Langchain4a.Net is
               & Stream_Element'Image (Reply (2)) & ")";
          end if;
       end;
-   end Socks5_Tunnel;
+    end Socks5_Tunnel;
 
-   --------------------------
-   --  TLS over socket     --
-   --------------------------
+    --------------------------
+    --  TLS over socket     --
+    --------------------------
 
     function Wrap_With_TLS
      (Socket : GNAT.Sockets.Socket_Type; Host : String)
       return SSL_Handle
-   is
+    is
       Ctx    : SSL_CTX;
       Handle : SSL_Handle;
       FD     : constant int := int (To_C (Socket));
       Ret    : int;
-   begin
+    begin
       Ctx := SSL_CTX_new (TLS_method);
       if Ctx = Null_CTX then
          raise Socket_Error with "SSL_CTX_new failed";
@@ -443,7 +324,7 @@ package body Langchain4a.Net is
        Timeout : Interfaces.C.int) return Interfaces.C.int;
     pragma Import (C, C_Poll, "poll");
 
-     function Wait_For_Data
+    function Wait_For_Data
       (Socket  : GNAT.Sockets.Socket_Type;
        Timeout_Sec : Natural) return Boolean is
         Pfd : aliased Pollfd;
@@ -494,9 +375,9 @@ package body Langchain4a.Net is
       end loop;
    end TLS_Write_All;
 
-   --------------------------
-   --  HTTP client         --
-   --------------------------
+    --------------------------
+    --  HTTP client         --
+    --------------------------
 
     function Perform_Request
       (URL          : String;
@@ -507,7 +388,7 @@ package body Langchain4a.Net is
        Extra_Headers : String := "";
        Proxy        : Proxy_Settings := (others => <>))
        return HTTP_Response
-   is
+    is
       Parsed   : constant Parsed_URL := Parse_URL (URL);
       Host     : constant String := To_String (Parsed.Host);
       Port     : constant Positive := (if Parsed.Port = 0 then 443 else Positive (Parsed.Port));
@@ -516,7 +397,7 @@ package body Langchain4a.Net is
       Handle   : SSL_Handle;
       Resp     : HTTP_Response;
       All_Data : Unbounded_String;
-   begin
+    begin
        GNAT.Sockets.Create_Socket (Socket, Family_Inet, GNAT.Sockets.Socket_Stream);
 
        if Proxy.Mode = Socks5 then
@@ -553,11 +434,11 @@ package body Langchain4a.Net is
        --  Build and send HTTP request
        declare
           Req_Line  : constant String := Method & " " & Path & " HTTP/1.1"
-                        & ASCII.CR & ASCII.LF;
+                         & ASCII.CR & ASCII.LF;
           Headers   : Unbounded_String :=
-            To_Unbounded_String ("Host: " & Host & ASCII.CR & ASCII.LF);
+             To_Unbounded_String ("Host: " & Host & ASCII.CR & ASCII.LF);
           Len_Str   : constant String :=
-            Fixed.Trim (Data'Length'Image, Ada.Strings.Both);
+             Fixed.Trim (Data'Length'Image, Ada.Strings.Both);
        begin
           Append (Headers, "User-Agent: Langchain4a/0.1" & ASCII.CR & ASCII.LF);
            Append (Headers, "Connection: close" & ASCII.CR & ASCII.LF);
@@ -575,11 +456,11 @@ package body Langchain4a.Net is
                Req_Line & To_String (Headers)
                  & "Content-Length: " & Len_Str
                  & ASCII.CR & ASCII.LF & ASCII.CR & ASCII.LF & Data;
-            Sent_Last : Stream_Element_Offset;
+              Sent_Last : Stream_Element_Offset;
          begin
             TLS_Write_All (Handle, To_SEA (Full_Req), Sent_Last);
          end;
-      end;
+       end;
 
        --  Read full response
        TLS_Read_All (Handle, Socket, All_Data);
@@ -634,6 +515,6 @@ package body Langchain4a.Net is
       when others =>
          GNAT.Sockets.Close_Socket (Socket);
          raise;
-   end Perform_Request;
+    end Perform_Request;
 
 end Langchain4a.Net;

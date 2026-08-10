@@ -1,12 +1,10 @@
 --  OpenRouter LLM client implementation
 
 with Ada.Strings.Unbounded;
-with Langchain4a.Net;
 
 package body Langchain4a.LLM.OpenRouter is
 
    use Ada.Strings.Unbounded;
-   use Langchain4a.Net;
 
    ----------
    -- Public API

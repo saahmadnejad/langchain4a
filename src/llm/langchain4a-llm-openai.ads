@@ -14,16 +14,26 @@ package Langchain4a.LLM.OpenAI is
       Cfg    : Langchain4a.Core.Config.OpenAI_Config);
 
    procedure Toggle_Proxy (Client : in out OpenAI_Client'Class;
-                         Enable  : Boolean);
+                          Enable  : Boolean);
 
    overriding procedure Send_Prompt (Client : in out OpenAI_Client;
-                                     P : Langchain4a.Core.Prompt);
+                                      P : Langchain4a.Core.Prompt);
 
    overriding function Get_Response
      (Client : OpenAI_Client) return Langchain4a.Core.LLM_Response;
 
    function Build_Extra_Headers
      (Client : OpenAI_Client'Class) return String;
+
+   function Build_Request_Body
+     (Prompt    : String;
+      Model     : String;
+      Temperature : Float;
+      Max_Tokens  : Natural) return String;
+
+   procedure Store_Response
+     (Client   : in out OpenAI_Client;
+      Response : Langchain4a.Net.HTTP_Response);
 
 private
 

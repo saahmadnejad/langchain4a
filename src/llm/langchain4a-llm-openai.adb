@@ -6,11 +6,13 @@ with Ada.Strings.Fixed;
 with Ada.Strings.Unbounded;
 with Ada.Strings;
 with Langchain4a.Net;
+with Langchain4a.Net.JSON;
 
 package body Langchain4a.LLM.OpenAI is
 
    use Ada.Strings.Unbounded;
    use Langchain4a.Net;
+   use Langchain4a.Net.JSON;
 
    package Fixed renames Ada.Strings.Fixed;
 
@@ -54,14 +56,14 @@ package body Langchain4a.LLM.OpenAI is
    end Get_Response;
 
    ----------
-   -- Internal helpers (shared by OpenAI and OpenRouter)
+   -- Request body builder
    ----------
 
    function Build_Request_Body
-     (Prompt : String;
-      Model  : String;
-      Temp   : Float;
-      Tokens : Natural) return String
+     (Prompt    : String;
+      Model     : String;
+      Temperature : Float;
+      Max_Tokens  : Natural) return String
    is
       Msg_Escaped : Unbounded_String;
    begin
@@ -75,46 +77,50 @@ package body Langchain4a.LLM.OpenAI is
       return
         "{""model"": """ & Model & ""","
       & " ""messages"": [{""role"": ""user"", ""content"": """ & To_String (Msg_Escaped) & """}],"
-      & " ""temperature"": " & Fixed.Trim (Float'Image (Temp), Ada.Strings.Both)
-      & ", ""max_tokens"": " & Natural'Image (Tokens)
+      & " ""temperature"": " & Fixed.Trim (Float'Image (Temperature), Ada.Strings.Both)
+      & ", ""max_tokens"": " & Natural'Image (Max_Tokens)
       & "}";
    end Build_Request_Body;
 
-    procedure Store_Response
-      (Client   : in out OpenAI_Client;
-       Response : HTTP_Response) is
-    begin
-       if Response.Status_Code = 200 then
-          Client.Last_Response.Text :=
-            To_Unbounded_String
-              (Extract_Json_String
-                 (To_String (Response.Content), "content"));
-          Client.Last_Response.Tokens :=
-            Extract_Json_Integer
-              (To_String (Response.Content), "total_tokens");
-       else
-          declare
-             Err_Msg : constant String :=
-               Extract_Json_String
-                 (To_String (Response.Content), "message");
-          begin
-             Client.Last_Response.Text :=
-               To_Unbounded_String
-                 ("Error: "
-                  & (if Err_Msg /= ""
-                     then Err_Msg
-                     else "HTTP " & Natural'Image (Response.Status_Code)));
-             Client.Last_Response.Tokens := 0;
-          end;
-       end if;
-    end Store_Response;
+   ----------
+   -- Response handler
+   ----------
+
+   procedure Store_Response
+     (Client   : in out OpenAI_Client;
+      Response : HTTP_Response) is
+   begin
+      if Response.Status_Code = 200 then
+         Client.Last_Response.Text :=
+           To_Unbounded_String
+             (Extract_Json_String
+                (To_String (Response.Content), "content"));
+         Client.Last_Response.Tokens :=
+           Extract_Json_Integer
+             (To_String (Response.Content), "total_tokens");
+      else
+         declare
+            Err_Msg : constant String :=
+              Extract_Json_String
+                (To_String (Response.Content), "message");
+         begin
+            Client.Last_Response.Text :=
+              To_Unbounded_String
+                ("Error: "
+                 & (if Err_Msg /= ""
+                    then Err_Msg
+                    else "HTTP " & Natural'Image (Response.Status_Code)));
+            Client.Last_Response.Tokens := 0;
+         end;
+      end if;
+   end Store_Response;
 
    ----------
    -- Send_Prompt
    ----------
 
    overriding procedure Send_Prompt (Client : in out OpenAI_Client;
-                                     P : Langchain4a.Core.Prompt) is
+                                      P : Langchain4a.Core.Prompt) is
       Prompt_Str : constant String := String (P);
       Req_Body   : constant String :=
         Build_Request_Body

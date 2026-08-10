@@ -9,6 +9,8 @@ secrets/
 obj/
 lib/
 exec/
+tests/obj/
+tests/bin/
 examples/obj/
 examples/examples/
 *.ali

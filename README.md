@@ -24,7 +24,8 @@ langchain4a/
 │   ├── chains/
 │   │   └── langchain4a-chains.ads       # Chain (abstract) for orchestrating LLM ops
 │   └── net/
-│       └── langchain4a-net.ad[bs]       # HTTP client with SOCKS5 proxy + TLS support
+│       ├── langchain4a-net.ad[bs]        # HTTP client with SOCKS5 proxy + TLS
+│       └── langchain4a-net-json.ad[bs]  # JSON extraction utilities
 ├── config.ini.template                  # Example configuration file
 ├── langchain4a.gpr                      # GNAT project file
 └── alire.toml                           # Alire package manifest
@@ -40,6 +41,9 @@ Langchain4a
 │   ├── LLM_Model          (abstract base, from Core)
 │   ├── OpenAI_Client      (base OpenAI-compatible client)
 │   └── OpenRouter_Client   (OpenRouter provider)
+├── Langchain4a.Net
+│   ├── Langchain4a.Net           (types: Proxy_Settings, HTTP_Response)
+│   └── Langchain4a.Net.JSON      (JSON extraction utilities)
 ├── Langchain4a.Memory
 └── Langchain4a.Chains
 ```
@@ -138,6 +142,58 @@ begin
 end Hello;
 ```
 
+## Using in Another Project
+
+### With Alire (local path)
+
+Add this to your `alire.toml`:
+
+```toml
+[[depends-on]]
+langchain4a = { path = "../langchain4a" }
+```
+
+Then build:
+
+```bash
+alr build
+```
+
+### With Alire (published)
+
+```bash
+alr with langchain4a
+alr build
+```
+
+### Manual GNAT project
+
+Add this to your `.gpr` file:
+
+```ada
+with "langchain4a";
+```
+
+Then compile with the library's source directories in your include path:
+
+```bash
+gnatmake -P my_project.gpr \
+  -Isrc -Isrc/core -Isrc/llm -Isrc/net \
+  liblangchain4a.a
+```
+
+### Key source files
+
+| File | Description |
+|------|-------------|
+| `src/langchain4a.ads` / `.adb` | Root package: `Initialize`, `Finalize`, `Version` |
+| `src/core/langchain4a-core.ads` | Base types: `Prompt`, `LLM_Response`, `LLM_Model` (abstract) |
+| `src/core/langchain4a-core-config.ad[bs]` | Config loading (INI + env vars, proxy settings) |
+| `src/llm/langchain4a-llm-openai.ad[bs]` | `OpenAI_Client` — base OpenAI-compatible client |
+| `src/llm/langchain4a-llm-openrouter.ad[bs]` | `OpenRouter_Client` — OpenRouter provider |
+| `src/net/langchain4a-net.ad[bs]` | HTTP types + `Perform_Request` with SOCKS5/TLS |
+| `src/net/langchain4a-net-json.ad[bs]` | `Extract_Json_String`, `Extract_Json_Integer` |
+
 ## Current Status
 
 | Component          | Status       | Notes                                    |
@@ -145,6 +201,7 @@ end Hello;
 | Core types         | Implemented  | Prompt, LLM_Response, LLM_Model abstract |
 | Config loading     | Implemented  | File + env var support                   |
 | HTTP client        | Implemented  | `Langchain4a.Net` with SOCKS5 + TLS      |
+| JSON utilities     | Implemented  | `Langchain4a.Net.JSON` extraction        |
 | OpenRouter client  | Implemented  | Full HTTP API via `Langchain4a.Net`      |
 | OpenAI client      | Implemented  | Base OpenAI-compatible client            |
 | Memory store       | Stubbed      | No-op Store/Retrieve                     |
@@ -155,10 +212,16 @@ end Hello;
 ### Building and testing
 
 ```bash
-alr build           # or: gnatmake -P langchain4a.gpr
+alr build              # Build the library
+./tests/run_tests.sh   # Build and run all 47 tests
+# Or manually:
+alr exec -- gnatmake -P tests/tests.gpr
+alr exec -- ./tests/bin/test_main
 ```
 
-No formal test suite exists yet. See [AGENTS.md](AGENTS.md) for contributor workflow guidance.
+The test suite uses [AUnit](https://github.com/adacore/aunit) and is located in `tests/`.
+All 47 tests follow the **Arrange-Act-Assert (AAA)** pattern with
+**Given_When_Then** naming convention. See [AGENTS.md](AGENTS.md) for contributor workflow guidance.
 
 ### License
 

@@ -2,6 +2,40 @@
 
 Contributor and agent workflow guide for **Langchain4a**.
 
+## Role: Software Architect
+
+When operating as a software architect, adhere to the following principles:
+
+- **Single Responsibility Principle (SRP)**: Each module, package, and
+  procedure must have one reason to change. If a unit grows beyond its
+  core concern, split it.
+- **Open/Closed Principle**: Design for extension, not modification. Use
+  tagged types, interfaces, and dispatching to allow providers to be
+  added without changing existing code.
+- **Liskov Substitution Principle**: Derived types must be substitutable
+  for their base types. Document and test behavioural contracts.
+- **Interface Segregation**: Clients should not be forced to depend on
+  methods they do not use. Keep package specs lean.
+- **Dependency Inversion**: High-level policy depends on abstractions,
+  not concretions. Where the architecture allows, inject dependencies
+  rather than hard-coding them.
+
+### Testing conventions (AAA + Given_When_Then)
+
+All unit tests follow the **Arrange-Act-Assert (AAA)** pattern and use
+**Given_When_Then** naming:
+
+```
+Given_<preconditions>_When_<action>_Then_<expected_outcome>
+```
+
+**Frontend tests** verify the public API contract — the surface that
+external consumers rely on.  **Backend tests** verify internal
+implementation details exercised through the public interface (parsing
+edge-cases, state transitions, error paths).
+
+```
+
 ## Project at a glance
 
 - **Language:** Ada 2012 (GNAT-style identifiers use `Langchain4a` as the root package name)
@@ -54,7 +88,8 @@ src/                    # All Ada source files
     langchain4a-chains.ads
   net/                  # HTTP client with SOCKS5 + TLS
     langchain4a-net.ads / .adb
-config/                 # Alire-generated config (do not edit by hand)
+    langchain4a-net-json.ads / .adb   # JSON extraction utilities (SRP)
+  config/                 # Alire-generated config (do not edit by hand)
 ```
 
 Do **not** mix files across subdirectories. Each subdirectory maps to a sub-package.
@@ -80,8 +115,11 @@ Defined in `langchain4a.gpr`:
 
 1. Add a new variant to `Provider_Kind` in `src/core/langchain4a-core-config.ads`.
 2. Add a corresponding config record in `Configuration`.
-3. Extend `Load_Config` / `Load_From_Env` in `ada_llm-core-config.adb`.
+3. Extend `Load_Config` / `Load_From_Env` in `src/core/langchain4a-core-config.adb`.
+   Use the shared `Set_Proxy_*` helpers to avoid duplication (SRP).
 4. Create a new client type in `src/llm/`, deriving from `OpenAI_Client` if OpenAI-compatible.
+   Override `Build_Extra_Headers` for provider-specific headers.
+   `Build_Request_Body` and `Store_Response` are public for testing and reuse.
 
 ### Add a chain type
 
@@ -98,13 +136,41 @@ gcc -c -gnat2012 -gnatwU -Isrc -Isrc/core -Isrc/llm -Isrc/memory -Isrc/chains \
 
 Exit code 0 = all good.
 
-## Known limitations / TODOs
+### Run unit tests
 
-- `Memory_Store` is a null record with no-op procedures.
-- `Chain.Run` is abstract with no concrete implementations.
-- No test framework is integrated yet.
+Tests use [AUnit](https://github.com/adacore/aunit) and live in `tests/`.
 
-## Commit conventions
+```bash
+# Build and run all tests
+./tests/run_tests.sh
+
+# Manual build + run
+alr exec -- gnatmake -P tests/tests.gpr
+alr exec -- ./tests/bin/test_main
+```
+
+All test procedures follow the **Arrange-Act-Assert** pattern with
+**Given_When_Then** naming convention:
+`Given_<preconditions>_When_<action>_Then_<expected_outcome>`.
+
+Each test module exports a `Suite` function that aggregates test cases.
+The root suite (`test_suite.adb`) collects all module suites into one
+test runner (`test_main.adb`).
+
+### Add a new test module
+
+1. Create `tests/<module>_tests.ads` / `.adb` with a test fixture type
+   derived from `AUnit.Test_Fixtures.Test_Fixture`.
+2. Implement test procedures with names following the
+   `Given_State_When_Action_Then_Outcome` convention.
+3. Structure each test body with explicit `-- Arrange`, `-- Act`,
+   `-- Assert` sections.
+4. Add a `Suite` function that builds the suite via `AUnit.Test_Caller`.
+5. Register the suite in `tests/test_suite.adb`.
+
+```
+
+### Commit conventions
 
 This project follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
 

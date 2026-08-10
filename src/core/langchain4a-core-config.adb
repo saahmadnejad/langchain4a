@@ -1,4 +1,4 @@
---  Configuration types and loading for Langchain4a
+--  Configuration types and loading for Langchain4a.
 
 with Ada.Text_IO;
 with Ada.Strings.Fixed;
@@ -22,6 +22,46 @@ package body Langchain4a.Core.Config is
 
    function Parse_Proxy_Mode (Val : String) return Proxy_Mode is
      (if Val = "socks5" then Socks5 else Disabled);
+
+   ----------
+   --  Proxy field setters (shared by Load_Config and Load_From_Env)
+   --  Each sets the field on BOTH OpenRouter and OpenAI configs,
+   --  ensuring proxy settings stay in sync across providers (SRP).
+   ----------
+
+   procedure Set_Proxy_Mode (Config : in out Configuration; Mode : Proxy_Mode) is
+   begin
+      Config.OpenRouter_Cfg.Proxy.Mode := Mode;
+      Config.OpenAI_Cfg.Proxy.Mode := Mode;
+   end Set_Proxy_Mode;
+
+   procedure Set_Proxy_Host (Config : in out Configuration; Host : String) is
+   begin
+      Config.OpenRouter_Cfg.Proxy.Host := To_Unbounded_String (Host);
+      Config.OpenAI_Cfg.Proxy.Host := To_Unbounded_String (Host);
+   end Set_Proxy_Host;
+
+   procedure Set_Proxy_Port (Config : in out Configuration; Port : Natural) is
+   begin
+      Config.OpenRouter_Cfg.Proxy.Port := Port;
+      Config.OpenAI_Cfg.Proxy.Port := Port;
+   end Set_Proxy_Port;
+
+   procedure Set_Proxy_User (Config : in out Configuration; User : String) is
+   begin
+      Config.OpenRouter_Cfg.Proxy.Username := To_Unbounded_String (User);
+      Config.OpenAI_Cfg.Proxy.Username := To_Unbounded_String (User);
+   end Set_Proxy_User;
+
+   procedure Set_Proxy_Pass (Config : in out Configuration; Pass : String) is
+   begin
+      Config.OpenRouter_Cfg.Proxy.Password := To_Unbounded_String (Pass);
+      Config.OpenAI_Cfg.Proxy.Password := To_Unbounded_String (Pass);
+   end Set_Proxy_Pass;
+
+   ----------
+   --  Load_Config
+   ----------
 
    procedure Load_Config (Config : out Configuration; File_Path : String) is
       File : File_Type;
@@ -76,24 +116,15 @@ package body Langchain4a.Core.Config is
                         elsif Key = "openai_max_tokens" then
                            Config.OpenAI_Cfg.Max_Tokens := Natural'Value (Val);
                         elsif Key = "proxy_mode" then
-                           declare
-                              Mode : constant Proxy_Mode := Parse_Proxy_Mode (Val);
-                           begin
-                              Config.OpenRouter_Cfg.Proxy.Mode := Mode;
-                              Config.OpenAI_Cfg.Proxy.Mode := Mode;
-                           end;
+                           Set_Proxy_Mode (Config, Parse_Proxy_Mode (Val));
                         elsif Key = "proxy_host" then
-                           Config.OpenRouter_Cfg.Proxy.Host := To_Unbounded_String (Val);
-                           Config.OpenAI_Cfg.Proxy.Host := To_Unbounded_String (Val);
+                           Set_Proxy_Host (Config, Val);
                         elsif Key = "proxy_port" then
-                           Config.OpenRouter_Cfg.Proxy.Port := Natural'Value (Val);
-                           Config.OpenAI_Cfg.Proxy.Port := Natural'Value (Val);
+                           Set_Proxy_Port (Config, Natural'Value (Val));
                         elsif Key = "proxy_user" then
-                           Config.OpenRouter_Cfg.Proxy.Username := To_Unbounded_String (Val);
-                           Config.OpenAI_Cfg.Proxy.Username := To_Unbounded_String (Val);
+                           Set_Proxy_User (Config, Val);
                         elsif Key = "proxy_pass" then
-                           Config.OpenRouter_Cfg.Proxy.Password := To_Unbounded_String (Val);
-                           Config.OpenAI_Cfg.Proxy.Password := To_Unbounded_String (Val);
+                           Set_Proxy_Pass (Config, Val);
                         end if;
                      end;
                   end if;
@@ -109,6 +140,10 @@ package body Langchain4a.Core.Config is
          end if;
          raise;
    end Load_Config;
+
+   ----------
+   --  Load_From_Env
+   ----------
 
    procedure Load_From_Env (Config : out Configuration) is
    begin
@@ -167,30 +202,28 @@ package body Langchain4a.Core.Config is
          end if;
       end;
 
-      --  Proxy settings (shared)
+      --  Proxy settings (shared across both providers)
       declare
-         Mode_Str   : constant String := Get_Env ("PROXY_MODE");
-         Host_Str   : constant String := Get_Env ("PROXY_HOST");
-         Port_Str   : constant String := Get_Env ("PROXY_PORT");
-         User_Str   : constant String := Get_Env ("PROXY_USER");
-         Pass_Str   : constant String := Get_Env ("PROXY_PASS");
+         Mode_Str : constant String := Get_Env ("PROXY_MODE");
+         Host_Str : constant String := Get_Env ("PROXY_HOST");
+         Port_Str : constant String := Get_Env ("PROXY_PORT");
+         User_Str : constant String := Get_Env ("PROXY_USER");
+         Pass_Str : constant String := Get_Env ("PROXY_PASS");
       begin
          if Mode_Str = "socks5" then
-            Config.OpenRouter_Cfg.Proxy.Mode := Socks5;
-            Config.OpenAI_Cfg.Proxy.Mode := Socks5;
-            Config.OpenRouter_Cfg.Proxy.Host := To_Unbounded_String (Host_Str);
-            Config.OpenRouter_Cfg.Proxy.Port :=
-              (if Port_Str /= "" then Natural'Value (Port_Str) else 0);
-            Config.OpenRouter_Cfg.Proxy.Username := To_Unbounded_String (User_Str);
-            Config.OpenRouter_Cfg.Proxy.Password := To_Unbounded_String (Pass_Str);
-            Config.OpenAI_Cfg.Proxy.Host := To_Unbounded_String (Host_Str);
-            Config.OpenAI_Cfg.Proxy.Port :=
-              (if Port_Str /= "" then Natural'Value (Port_Str) else 0);
-            Config.OpenAI_Cfg.Proxy.Username := To_Unbounded_String (User_Str);
-            Config.OpenAI_Cfg.Proxy.Password := To_Unbounded_String (Pass_Str);
+            Set_Proxy_Mode (Config, Socks5);
+            Set_Proxy_Host (Config, Host_Str);
+            Set_Proxy_Port (Config,
+                            (if Port_Str /= "" then Natural'Value (Port_Str) else 0));
+            Set_Proxy_User (Config, User_Str);
+            Set_Proxy_Pass (Config, Pass_Str);
          end if;
       end;
    end Load_From_Env;
+
+   ----------
+   --  API key accessors
+   ----------
 
    function Get_API_Key_From_Env return Unbounded_String is
       Key : constant String := Get_Env ("OPENROUTER_API_KEY");

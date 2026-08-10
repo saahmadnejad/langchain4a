@@ -1,4 +1,6 @@
---  Shared network types: proxy settings, HTTP responses, JSON utilities
+--  Shared network types: proxy settings and HTTP responses.
+--  JSON extraction utilities live in Langchain4a.Net.JSON (separate package,
+--  following the Single Responsibility Principle).
 
 with Ada.Strings.Unbounded;
 with Ada.Streams;
@@ -31,13 +33,5 @@ package Langchain4a.Net is
       Extra_Headers : String := "";
       Proxy        : Proxy_Settings := (others => <>))
       return HTTP_Response;
-
-   function Extract_Json_String (JSON, Key : String) return String;
-   --  Extract a string value for @Key from a JSON document.
-   --  Returns "" if the key is not found.
-
-   function Extract_Json_Integer (JSON, Key : String) return Natural;
-   --  Extract an integer value for @Key from a JSON document.
-   --  Returns 0 if the key is not found.
 
 end Langchain4a.Net;

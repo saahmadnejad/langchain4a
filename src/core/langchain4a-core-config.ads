@@ -1,4 +1,5 @@
---  Configuration types and loading for Langchain4a
+--  Configuration types and loading for Langchain4a.
+--  Uses Langchain4a.Net for Proxy_Settings and Proxy_Mode types.
 
 with Ada.Strings.Unbounded;
 with Langchain4a.Net;

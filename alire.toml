@@ -11,4 +11,5 @@ website = "https://github.com/yourusername/langchain4a"
 executables = []
 
 [[depends-on]]
+aunit = "^25.0.0"
 aws = "^24.0.0"
