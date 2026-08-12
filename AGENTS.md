@@ -1,194 +1,103 @@
 # AGENTS.md
 
-Contributor and agent workflow guide for **Langchain4a**.
-
-## Role: Software Architect
-
-When operating as a software architect, adhere to the following principles:
-
-- **Single Responsibility Principle (SRP)**: Each module, package, and
-  procedure must have one reason to change. If a unit grows beyond its
-  core concern, split it.
-- **Open/Closed Principle**: Design for extension, not modification. Use
-  tagged types, interfaces, and dispatching to allow providers to be
-  added without changing existing code.
-- **Liskov Substitution Principle**: Derived types must be substitutable
-  for their base types. Document and test behavioural contracts.
-- **Interface Segregation**: Clients should not be forced to depend on
-  methods they do not use. Keep package specs lean.
-- **Dependency Inversion**: High-level policy depends on abstractions,
-  not concretions. Where the architecture allows, inject dependencies
-  rather than hard-coding them.
-
-### Testing conventions (AAA + Given_When_Then)
-
-All unit tests follow the **Arrange-Act-Assert (AAA)** pattern and use
-**Given_When_Then** naming:
-
-```
-Given_<preconditions>_When_<action>_Then_<expected_outcome>
-```
-
-**Frontend tests** verify the public API contract — the surface that
-external consumers rely on.  **Backend tests** verify internal
-implementation details exercised through the public interface (parsing
-edge-cases, state transitions, error paths).
-
-```
+High-signal workflow guide for OpenCode sessions on **Langchain4a**.
+Every item is a fact an agent would likely miss without help.
 
 ## Project at a glance
 
-- **Language:** Ada 2012 (GNAT-style identifiers use `Langchain4a` as the root package name)
-- **Package manager:** Alire
-- **Build system:** GNAT Project file (`langchain4a.gpr`)
-- **Library kind:** Static (`liblangchain4a.a`)
-- **Stage:** Early alpha (v0.1.0) -- most implementations are stubs
+- **Language:** Ada 2022 (tested with FSF GNAT 14.2.0; project pins `-gnat2022`). Root package identifier must be `Langchain4a` (PascalCase, case-insensitive).
+- **Build system:** GNAT project `langchain4a.gpr`; package manager `alr`.
+- **Output:** static library `lib/liblangchain4a.a` (Object_Dir `obj/`, Library_Dir `lib/`).
+- **Stage:** early alpha (v0.1.0). `memory/` and `chains/` are stubs.
+- **No CI / no `opencode.json` / no `.github`.** All verification is local: `alr build` + `./tests/run_tests.sh`.
 
-## Quick start
+## Build & test commands (in this order: build lib, then build+run tests)
 
 ```bash
-# Build
-alr build
-# or manually:
-# gnatmake -P langchain4a.gpr
+alr build                          # build static lib (lib/liblangchain4a.a)
+# or: gnatmake -P langchain4a.gpr
 
-# Compile individual sources (useful for quick iteration):
-gcc -c -gnat2012 -gnatwU -Isrc -Isrc/core -Isrc/llm -Isrc/memory -Isrc/chains \
-    src/core/langchain4a-core-config.adb -o /dev/null
+# quick single-file compile check (note exact -Isrc flags; gpr handles paths automatically)
+gcc -c -gnat2022 -gnatwU -Isrc -Isrc/core -Isrc/llm -Isrc/memory -Isrc/chains \
+    src/langchain4a.adb -o /dev/null
+
+# build + run all 47 AUnit tests
+./tests/run_tests.sh
+
+# manual test build + run
+alr exec -- gnatmake -P tests/tests.gpr
+alr exec -- ./tests/bin/test_main        # tests.gpr Exec_Dir = ./bin
+```
+
+- Tests use AUnit, follow **AAA** + **Given_When_Then** naming, live in `tests/`.
+- 47 tests across: `config_tests`, `openai_tests`, `openrouter_tests`, `net_json_tests`, `langchain4a_tests`.
+- Suites are registered in `tests/test_suite.adb`; runner is `tests/test_main.adb`.
+- `./tests/test_config.ini` is the fixture consumed by `config_tests`.
+- Compiler switches are identical across projects: `-gnat2022 -g -gnatwU` (`tests.gpr` and `langchain4a.gpr` both enforce `-gnatwU` -> build fails on any warning).
+
+## Secrets / local-only files (gitignored — never commit)
+
+- `.env` — local env vars. **Currently present and contains a live OpenRouter key + a SOCKS5 proxy (`192.168.1.151:10808`).** `.env.example` is the template for new users.
+- `config.ini`, `config.local` — local INI config; `config.ini.template` is the tracked template. `config.local` holds only the API key.
+- `config/` dir (`config/langchain4a_config.ads/.gpr/.h`) — **Alire-generated; do not edit by hand.**
+- Build artifacts: `obj/`, `lib/`, `*.ali`, `*.o`, `*.a`, `tests/obj/`, `tests/bin/`, `examples/obj/`.
+  - Note: you will see stray `*.ali`/`*.o` in the repo root from prior ad-hoc builds; they are gitignored, but keep `git status` clean by building through the `.gpr`.
+
+## Architecture wiring
+
+- `Langchain4a.Core.LLM_Model` is the abstract tagged base (`Send_Prompt` abstract, `Get_Response` abstract) in `src/core/langchain4a-core.ads`.
+- `Langchain4a.LLM.OpenAI.OpenAI_Client` derives from `LLM_Model` (`src/llm/langchain4a-llm-openai.ad[bs]`) — the base OpenAI-compatible client exposing `Configure`, `Toggle_Proxy`, `Send_Prompt`, `Get_Response`, `Build_Extra_Headers`, `Build_Request_Body`, `Store_Response`.
+- `Langchain4a.LLM.OpenRouter.OpenRouter_Client` derives from `OpenAI_Client` and only overrides `Configure` + `Build_Extra_Headers` (injects `HTTP-Referer` + `X-Title`).
+- HTTP lives in `src/net/`: `Proxy_Settings`, `HTTP_Response`, `Perform_Request` (SOCKS5 + TLS), and `Langchain4a.Net.JSON` (`Extract_Json_String`, `Extract_Json_Integer`).
+
+## Source layout
+
+```
+src/
+  langchain4a.ad[bs]            Initialize / Finalize / Version
+  core/langchain4a-core.ads      LLM_Model (abstract), Prompt, LLM_Response
+  core/langchain4a-core-config.ad[bs]  Configuration, Load_Config (INI), Load_From_Env (env)
+  llm/langchain4a-llm.ads        LLM child package
+  llm/langchain4a-llm-openai.ad[bs]     OpenAI_Client (base)
+  llm/langchain4a-llm-openrouter.ad[bs] OpenRouter_Client (derives from OpenAI_Client)
+  net/langchain4a-net.ad[bs]     Proxy_Settings, HTTP_Response, Perform_Request
+  net/langchain4a-net-json.ad[bs]       Extract_Json_String, Extract_Json_Integer
+  memory/langchain4a-memory.ad[bs]      Memory_Store (stub)
+  chains/langchain4a-chains.ads          Chain (abstract)
+examples/openrouter_hello.adb   end-to-end example (needs OPENROUTER_API_KEY).
+```
+
+## Run an example locally
+
+`./run.sh` sources `.env` (if present) then `exec`s its arguments. To build then run the example:
+
+```bash
+alr exec -- gnatmake -P examples/openrouter_hello.gpr
+./run.sh ./examples/openrouter_hello
 ```
 
 ## Conventions
 
-### Naming
-
-| Context            | Convention                      | Example                          |
-|--------------------|---------------------------------|----------------------------------|
-| Package name       | `Langchain4a` (Ada identifier) | `package Langchain4a is`         |
-| Sub-packages       | `Langchain4a.Core`, etc.       | `package Langchain4a.LLM is`     |
-| File names         | `langchain4a-*.ad[bs]`          | `langchain4a-llm.ads`            |
-| GNAT project file  | `langchain4a.gpr`               | `project Langchain4a is`         |
-| Config units       | `Langchain4a_Config`            | in `config/langchain4a_config.*` |
-
-Ada is case-insensitive for identifiers, but **always use `Langchain4a` (PascalCase)** for the root and sub-package names to keep grep/search results predictable.
-
-### File layout
-
-```
-src/                    # All Ada source files
-  langchain4a.ads       # Root package spec
-  langchain4a.adb       # Root package body (Initialize/Finalize)
-  core/                 # Base types + configuration
-    langchain4a-core.ads
-    langchain4a-core-config.ads / .adb
-  llm/                  # LLM provider clients
-    langchain4a-llm.ads / .adb
-  memory/               # Memory stores
-    langchain4a-memory.ads / .adb
-  chains/               # Chain orchestration
-    langchain4a-chains.ads
-  net/                  # HTTP client with SOCKS5 + TLS
-    langchain4a-net.ads / .adb
-    langchain4a-net-json.ads / .adb   # JSON extraction utilities (SRP)
-  config/                 # Alire-generated config (do not edit by hand)
-```
-
-Do **not** mix files across subdirectories. Each subdirectory maps to a sub-package.
-
-### Compilation flags
-
-Defined in `langchain4a.gpr`:
-
-- `-gnat2012`  -- Ada 2012 standard
-- `-g`         -- Debug symbols
-- `-gnatwU`    -- Treat elaboration warnings as errors
-
-### Coding style
-
-- Indent with 3 spaces (`gnatmake` default).
-- Boolean operators: prefer `and then` / `or else` for short-circuit evaluation.
-- Ada comments use `--  ` (two spaces after dashes).
-- Follow RM-style naming: `Mixed_Case_With_Underscores`.
+- Indent 3 spaces; comments `--  ` (two spaces after `--`); prefer `and then`/`or else`.
+- Naming: `Mixed_Case_With_Underscores`; files `langchain4a-*.ad[bs]`; subpackages map to subdirectories (`core/` -> `Langchain4a.Core`, etc.). Do not mix files across subdirs.
+- Config loading: `Provider_Kind` is `(OpenRouter, OpenAI)`. New providers extend `Configuration` + `Load_Config`/`Load_From_Env`, reusing the shared `Set_Proxy_*` helpers in `langchain4a-core-config.adb` (SRP).
 
 ## Common tasks
 
 ### Add a new LLM provider
-
-1. Add a new variant to `Provider_Kind` in `src/core/langchain4a-core-config.ads`.
-2. Add a corresponding config record in `Configuration`.
-3. Extend `Load_Config` / `Load_From_Env` in `src/core/langchain4a-core-config.adb`.
-   Use the shared `Set_Proxy_*` helpers to avoid duplication (SRP).
-4. Create a new client type in `src/llm/`, deriving from `OpenAI_Client` if OpenAI-compatible.
-   Override `Build_Extra_Headers` for provider-specific headers.
-   `Build_Request_Body` and `Store_Response` are public for testing and reuse.
+1. Add a variant to `Provider_Kind` in `src/core/langchain4a-core-config.ads`.
+2. Add a config record field in `Configuration`.
+3. Extend `Load_Config` / `Load_From_Env` in `src/core/langchain4a-core-config.adb` using the `Set_Proxy_*` helpers.
+4. In `src/llm/`, create a client deriving from `OpenAI_Client` (OpenAI-compatible) and override `Build_Extra_Headers` for provider-specific headers. `Build_Request_Body` / `Store_Response` are public for testing/reuse.
 
 ### Add a chain type
+Define in `src/chains/` deriving from `Langchain4a.Chains.Chain`; override `Run`.
 
-1. Define the chain type in `src/chains/`.
-2. Derive from `Langchain4a.Chains.Chain` or the existing abstract.
-3. Override `Run`.
+### Add a test module
+1. `tests/<module>_tests.ads`/`.adb`: fixture derived from `AUnit.Test_Fixtures.Test_Fixture`.
+2. Procedures named `Given_<preconditions>_When_<action>_Then_<outcome>`; body uses `-- Arrange` / `-- Act` / `-- Assert`.
+3. Export a `Suite` function built via `AUnit.Test_Caller`.
+4. Register it in `tests/test_suite.adb` (add `with <Module>_Tests;` + `Add_Test`).
 
-### Run a quick compile check
-
-```bash
-gcc -c -gnat2012 -gnatwU -Isrc -Isrc/core -Isrc/llm -Isrc/memory -Isrc/chains \
-    src/langchain4a.adb -o /tmp/langchain4a.o
-```
-
-Exit code 0 = all good.
-
-### Run unit tests
-
-Tests use [AUnit](https://github.com/adacore/aunit) and live in `tests/`.
-
-```bash
-# Build and run all tests
-./tests/run_tests.sh
-
-# Manual build + run
-alr exec -- gnatmake -P tests/tests.gpr
-alr exec -- ./tests/bin/test_main
-```
-
-All test procedures follow the **Arrange-Act-Assert** pattern with
-**Given_When_Then** naming convention:
-`Given_<preconditions>_When_<action>_Then_<expected_outcome>`.
-
-Each test module exports a `Suite` function that aggregates test cases.
-The root suite (`test_suite.adb`) collects all module suites into one
-test runner (`test_main.adb`).
-
-### Add a new test module
-
-1. Create `tests/<module>_tests.ads` / `.adb` with a test fixture type
-   derived from `AUnit.Test_Fixtures.Test_Fixture`.
-2. Implement test procedures with names following the
-   `Given_State_When_Action_Then_Outcome` convention.
-3. Structure each test body with explicit `-- Arrange`, `-- Act`,
-   `-- Assert` sections.
-4. Add a `Suite` function that builds the suite via `AUnit.Test_Caller`.
-5. Register the suite in `tests/test_suite.adb`.
-
-```
-
-### Commit conventions
-
-This project follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
-
-Format:
-
-```
-<type>[optional scope]: <description>
-
-[optional body]
-```
-
-Types:
-
-| Type         | Use                                           |
-|--------------|-----------------------------------------------|
-| `feat`       | New feature                                   |
-| `fix`        | Bug fix                                       |
-| `refactor`   | Code restructuring (no behavior change)       |
-| `ci`         | CI/build pipeline changes                     |
-| `chore`      | Maintenance (deps, config, tooling)           |
-| `docs`       | Documentation only                            |
+## Commits
+Conventional Commits only: `feat|fix|refactor|ci|chore|docs` (+ optional scope). Format: `<type>[scope]: <description>`.
