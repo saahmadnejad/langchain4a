@@ -11,7 +11,7 @@ project Langchain4a is
     for Library_Kind use "static";
 
     package Compiler is
-      for Default_Switches ("Ada") use ("-gnat2012", "-g", "-gnatwU");
+      for Default_Switches ("Ada") use ("-gnat2022", "-g", "-gnatwU");
    end Compiler;
 
 end Langchain4a;

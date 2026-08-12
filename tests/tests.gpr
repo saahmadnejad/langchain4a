@@ -10,7 +10,7 @@ project Tests is
    for Main use ("test_main.adb");
 
    package Compiler is
-      for Default_Switches ("Ada") use ("-gnat2012", "-g", "-gnatwU");
+       for Default_Switches ("Ada") use ("-gnat2022", "-g", "-gnatwU");
    end Compiler;
 
 end Tests;

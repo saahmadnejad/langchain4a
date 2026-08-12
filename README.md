@@ -50,7 +50,7 @@ Langchain4a
 
 ## Requirements
 
-- Ada 2012 compiler (tested with GNAT GPL / FSF GCC)
+- Ada 2022 compiler (tested with FSF GNAT 14.2.0; project pins `-gnat2022`)
 - Alire (recommended for dependency management)
 - An [OpenRouter](https://openrouter.ai) API key for LLM requests
 

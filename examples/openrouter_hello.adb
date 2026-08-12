@@ -5,7 +5,7 @@
 --      -XBUILD_NAME=examples/openrouter_hello \
 --      examples/openrouter_hello.adb
 --  Or compile manually:
---    gcc -c -gnat2012 -gnatwU -Isrc -Isrc/core -Isrc/llm -Isrc/memory -Isrc/chains -Isrc/net examples/openrouter_hello.adb
+--    gcc -c -gnat2022 -gnatwU -Isrc -Isrc/core -Isrc/llm -Isrc/memory -Isrc/chains -Isrc/net examples/openrouter_hello.adb
 --    gnatbind -n examples/openrouter_hello.ali
 --    gnatlink examples/openrouter_hello.ali lib/liblangchain4a.a
 --
