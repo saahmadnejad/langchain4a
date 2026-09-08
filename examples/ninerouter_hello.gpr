@@ -1,0 +1,11 @@
+with "langchain4a";
+with "aws";
+
+project Ninerouter_Hello is
+
+   for Source_Dirs use ("../examples/");
+   for Object_Dir use "obj/ninerouter";
+   for Main use ("ninerouter_hello.adb");
+   for Exec_Dir use "examples";
+
+end Ninerouter_Hello;
