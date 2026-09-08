@@ -69,12 +69,24 @@ begin
    Put_Line ("  Model:    " & Model);
    New_Line;
 
-   Client.Send_Prompt (Langchain4a.Core.Prompt (Prompt_Text));
-
-   --  Retrieve and display the response
+   --  Send (retry once: the gateway sometimes drops a connection under
+   --  rate limiting; "reset after 2s").
    declare
-      Response : constant Langchain4a.Core.LLM_Response := Client.Get_Response;
+      Response : Langchain4a.Core.LLM_Response;
    begin
+      for Attempt in 1 .. 2 loop
+         Client.Send_Prompt (Langchain4a.Core.Prompt (Prompt_Text));
+         Response := Client.Get_Response;
+         declare
+            Txt : constant String := To_String (Response.Text);
+         begin
+            exit when Response.Tokens > 0
+              or else Txt'Length < 6
+              or else Txt (Txt'First .. Txt'First + 5) /= "Error:";
+         end;
+         delay 2.0;
+      end loop;
+
       Put_Line ("--- Response ---");
       Put_Line (To_String (Response.Text));
       Put_Line ("---");
