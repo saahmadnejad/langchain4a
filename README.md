@@ -201,6 +201,8 @@ gnatmake -P my_project.gpr \
 | `src/llm/langchain4a-llm-openai.ad[bs]` | `OpenAI_Client` — base OpenAI-compatible client |
 | `src/llm/langchain4a-llm-openrouter.ad[bs]` | `OpenRouter_Client` — OpenRouter provider |
 | `src/net/langchain4a-net.ad[bs]` | HTTP types + `Perform_Request` with SOCKS5/TLS |
+
+`Perform_Request` speaks plain HTTP for `http://` URLs and TLS for `https://` (scheme auto-detected, anything other than `http`/`https` raises `GNAT.Sockets.Socket_Error`). Note: `OpenAI_Client` requests always carry an explicit `"stream": false` — some OpenAI-compatible gateways default to SSE streaming when the field is absent.
 | `src/net/langchain4a-net-json.ad[bs]` | `Extract_Json_String`, `Extract_Json_Integer` |
 
 ## Current Status

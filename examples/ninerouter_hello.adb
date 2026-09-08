@@ -43,6 +43,13 @@ procedure Ninerouter_Hello is
       then Ada.Command_Line.Argument (1)
       else "Explain in one paragraph why Ada is a good fit for reliable software.");
 
+   --  True when the response is an error placeholder from Store_Response
+   function Is_Error_Response
+     (Text : String; Tokens : Natural) return Boolean is
+     (Tokens = 0
+      and then Text'Length >= 6
+      and then Text (Text'First .. Text'First + 5) = "Error:");
+
    Cfg    : Langchain4a.Core.Config.OpenAI_Config;
    Client : Langchain4a.LLM.OpenAI.OpenAI_Client;
 begin
@@ -77,13 +84,8 @@ begin
       for Attempt in 1 .. 2 loop
          Client.Send_Prompt (Langchain4a.Core.Prompt (Prompt_Text));
          Response := Client.Get_Response;
-         declare
-            Txt : constant String := To_String (Response.Text);
-         begin
-            exit when Response.Tokens > 0
-              or else Txt'Length < 6
-              or else Txt (Txt'First .. Txt'First + 5) /= "Error:";
-         end;
+         exit when not Is_Error_Response
+           (To_String (Response.Text), Response.Tokens);
          delay 2.0;
       end loop;
 

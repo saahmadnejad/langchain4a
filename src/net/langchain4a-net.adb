@@ -388,7 +388,9 @@ package body Langchain4a.Net is
       while Offset <= Data'Last loop
          GNAT.Sockets.Send_Socket
            (Socket, Data (Offset .. Data'Last), Sent_Last);
-         exit when Sent_Last < Offset;
+         if Sent_Last < Offset then
+            raise Socket_Error with "plain send failed";
+         end if;
          Offset := Sent_Last + 1;
       end loop;
    end Plain_Write_All;
@@ -431,15 +433,16 @@ package body Langchain4a.Net is
       Host     : constant String := To_String (Parsed.Host);
       Port     : constant Positive := (if Parsed.Port = 0 then 443 else Positive (Parsed.Port));
       Path     : constant String := To_String (Parsed.Path);
-      Use_TLS  : constant Boolean :=
-        (if To_String (Parsed.Scheme) = "" or else
-              To_String (Parsed.Scheme) = "https"
-         then True else False);
+      Scheme   : constant String := To_String (Parsed.Scheme);
+      Use_TLS  : constant Boolean := Scheme = "" or else Scheme = "https";
       Socket   : GNAT.Sockets.Socket_Type;
       Handle   : SSL_Handle := Null_Handle;
       Resp     : HTTP_Response;
       All_Data : Unbounded_String;
    begin
+      if Scheme /= "" and then Scheme /= "http" and then Scheme /= "https" then
+         raise Socket_Error with "unsupported URL scheme: " & Scheme;
+      end if;
       GNAT.Sockets.Create_Socket (Socket, Family_Inet, GNAT.Sockets.Socket_Stream);
 
        if Proxy.Mode = Socks5 then
