@@ -17,9 +17,10 @@ Every item is a fact an agent would likely miss without help.
 alr build                          # build static lib (lib/liblangchain4a.a)
 # or: gnatmake -P langchain4a.gpr
 
-# quick single-file compile check (note exact -Isrc flags; gpr handles paths automatically)
-gcc -c -gnat2022 -gnatwU -Isrc -Isrc/core -Isrc/llm -Isrc/memory -Isrc/chains \
-    src/langchain4a.adb -o /dev/null
+# quick single-file syntax check (all 6 include dirs; -gnatc = check only, no .o)
+gcc -c -gnat2022 -gnatwU -gnatc \
+    -Isrc -Isrc/core -Isrc/llm -Isrc/memory -Isrc/chains -Isrc/net \
+    src/langchain4a.adb
 
 # build + run all 47 AUnit tests
 ./tests/run_tests.sh
@@ -37,11 +38,10 @@ alr exec -- ./tests/bin/test_main        # tests.gpr Exec_Dir = ./bin
 
 ## Secrets / local-only files (gitignored — never commit)
 
-- `.env` — local env vars. **Currently present and contains a live OpenRouter key + a SOCKS5 proxy (`192.168.1.151:10808`).** `.env.example` is the template for new users.
-- `config.ini`, `config.local` — local INI config; `config.ini.template` is the tracked template. `config.local` holds only the API key.
-- `config/` dir (`config/langchain4a_config.ads/.gpr/.h`) — **Alire-generated; do not edit by hand.**
-- Build artifacts: `obj/`, `lib/`, `*.ali`, `*.o`, `*.a`, `tests/obj/`, `tests/bin/`, `examples/obj/`.
-  - Note: you will see stray `*.ali`/`*.o` in the repo root from prior ad-hoc builds; they are gitignored, but keep `git status` clean by building through the `.gpr`.
+- `.env` — local env vars. **Currently present: live OpenRouter key + SOCKS5 proxy (`192.168.1.151:10808`).** `.env.example` is the template.
+- `config.ini`, `config.local`, `config/` — local INI + **Alire-generated** `config/langchain4a_config.ads/.gpr/.h` (never edit by hand). Tracked template: `config.ini.template`.
+  - **Gotcha:** API keys load ONLY from env (`OPENROUTER_API_KEY` / `OPENAI_API_KEY`). The `config.local` / `api_key` option suggested in templates is not read by any code in `src/`.
+- Build artifacts: `obj/`, `lib/`, `*.ali`, `*.o`, `*.a`, `tests/obj/`, `tests/bin/`, `examples/obj/`. Build through a `.gpr` / `./tests/run_tests.sh` so artifacts land in `obj/`, not the repo root.
 
 ## Architecture wiring
 
