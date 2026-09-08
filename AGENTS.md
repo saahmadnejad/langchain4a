@@ -22,7 +22,7 @@ gcc -c -gnat2022 -gnatwU -gnatc \
     -Isrc -Isrc/core -Isrc/llm -Isrc/memory -Isrc/chains -Isrc/net \
     src/langchain4a.adb
 
-# build + run all 47 AUnit tests
+# build + run all 49 AUnit tests
 ./tests/run_tests.sh
 
 # manual test build + run
@@ -31,7 +31,8 @@ alr exec -- ./tests/bin/test_main        # tests.gpr Exec_Dir = ./bin
 ```
 
 - Tests use AUnit, follow **AAA** + **Given_When_Then** naming, live in `tests/`.
-- 47 tests across: `config_tests`, `openai_tests`, `openrouter_tests`, `net_json_tests`, `langchain4a_tests`.
+- 49 tests across: `config_tests`, `openai_tests`, `openrouter_tests`, `net_json_tests`, `net_tests`, `langchain4a_tests`.
+- `net_tests` spins its own one-shot TCP listener (task) — no external service needed; also asserts `Perform_Request` rejects non-`http`/`https` schemes.
 - Suites are registered in `tests/test_suite.adb`; runner is `tests/test_main.adb`.
 - `./tests/test_config.ini` is the fixture consumed by `config_tests`.
 - Compiler switches are identical across projects: `-gnat2022 -g -gnatwU` (`tests.gpr` and `langchain4a.gpr` both enforce `-gnatwU` -> build fails on any warning).
