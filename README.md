@@ -18,9 +18,11 @@ langchain4a/
 │   │   ├── langchain4a-core.ads         # Base types: Prompt, LLM_Response, LLM_Model (abstract)
 │   │   └── langchain4a-core-config.ad[bs]  # Config loading (INI file + env vars)
 │   ├── llm/
-│   │   └── langchain4a-llm.ad[bs]       # Provider clients: OpenAI_Client (base), OpenRouter_Client
+│   │   ├── langchain4a-llm.ads          # LLM skeleton package
+│   │   ├── langchain4a-llm-openai.ad[bs]     # OpenAI_Client (base)
+│   │   └── langchain4a-llm-openrouter.ad[bs] # OpenRouter_Client (subclass, extra headers)
 │   ├── memory/
-│   │   └── langchain4a-memory.ad[bs]    # Memory_Store for conversation context
+│   │   └── langchain4a-memory.ad[bs]    # Memory_Store for conversation context (stub)
 │   ├── chains/
 │   │   └── langchain4a-chains.ads       # Chain (abstract) for orchestrating LLM ops
 │   └── net/
@@ -85,7 +87,7 @@ This builds a static library `liblangchain4a.a` in `lib/`.
 
 ```bash
 export OPENROUTER_API_KEY="sk-or-v1-..."
-export OPENROUTER_ENDPOINT="https://openrouter.ai/api/v1"
+export OPENROUTER_ENDPOINT="https://openrouter.ai/api/v1/chat/completions"
 export OPENROUTER_MODEL="openai/gpt-3.5-turbo"
 export OPENROUTER_TEMPERATURE="0.7"
 export OPENROUTER_MAX_TOKENS="1024"
@@ -119,23 +121,30 @@ PROXY_PORT=1080
 ## Usage
 
 ```ada
+with Ada.Text_IO;
+with Ada.Strings.Unbounded;
+
 with Langchain4a;
-with Langchain4a.LLM;
+with Langchain4a.Core;
 with Langchain4a.Core.Config;
+with Langchain4a.LLM.OpenRouter;
 
 procedure Hello is
+   use Ada.Text_IO;
+   use Ada.Strings.Unbounded;
+
    Config : Langchain4a.Core.Config.Configuration;
-   Client : Langchain4a.LLM.OpenRouter_Client;
+   Client : Langchain4a.LLM.OpenRouter.OpenRouter_Client;
 begin
    Langchain4a.Initialize;
 
-   Langchain4a.Core.Config.Load_From_Env(Config);
-   Client.Configure(Config.OpenRouter_Cfg);
-   Client.Send_Prompt("Hello from Ada!");
+   Langchain4a.Core.Config.Load_From_Env (Config);
+   Client.Configure (Config.OpenRouter_Cfg);
+   Client.Send_Prompt (Langchain4a.Core.Prompt ("Hello from Ada!"));
    declare
       Resp : constant Langchain4a.Core.LLM_Response := Client.Get_Response;
    begin
-      Put_Line(To_String(Resp.Text));
+      Put_Line (To_String (Resp.Text));
    end;
 
    Langchain4a.Finalize;
@@ -178,7 +187,7 @@ Then compile with the library's source directories in your include path:
 
 ```bash
 gnatmake -P my_project.gpr \
-  -Isrc -Isrc/core -Isrc/llm -Isrc/net \
+  -Isrc -Isrc/core -Isrc/llm -Isrc/net -Isrc/memory -Isrc/chains \
   liblangchain4a.a
 ```
 
