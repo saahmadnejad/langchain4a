@@ -64,17 +64,26 @@ src/
   net/langchain4a-net-json.ad[bs]       Extract_Json_String, Extract_Json_Integer
   memory/langchain4a-memory.ad[bs]      Memory_Store (stub)
   chains/langchain4a-chains.ads          Chain (abstract)
+examples/ninerouter_hello.adb   local 9Router gateway example (base OpenAI_Client).
 examples/openrouter_hello.adb   end-to-end example (needs OPENROUTER_API_KEY).
 ```
 
 ## Run an example locally
 
-`./run.sh` sources `.env` (if present) then `exec`s its arguments. To build then run the example:
+`./run.sh` sources `.env` (if present) then `exec`s its arguments. To build then run:
 
 ```bash
+# OpenRouter (needs OPENROUTER_API_KEY)
 alr exec -- gnatmake -P examples/openrouter_hello.gpr
-./run.sh ./examples/openrouter_hello
+./run.sh ./examples/examples/openrouter_hello
+
+# Local 9Router gateway (needs NINEROUTER_API_KEY; server runs OpenAI-compatible API on :20128)
+alr exec -- gnatmake -P examples/ninerouter_hello.gpr
+./run.sh ./examples/examples/ninerouter_hello
 ```
+
+- `Perform_Request` speaks plain HTTP for `http://` URLs, TLS for `https://` (scheme auto-detected; SOCKS5 proxy still applies to both).
+- `GNAT.Sockets.Socket_Error` is the exception raised on connect/TLS failures (not a `Langchain4a.Net` name).
 
 ## Conventions
 
