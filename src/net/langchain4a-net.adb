@@ -375,6 +375,44 @@ package body Langchain4a.Net is
       end loop;
    end TLS_Write_All;
 
+   --------------------------
+   --  Plain (no TLS) I/O  --
+   --------------------------
+
+   procedure Plain_Write_All
+     (Socket : GNAT.Sockets.Socket_Type;
+      Data   : Stream_Element_Array) is
+      Offset    : Stream_Element_Offset := Data'First;
+      Sent_Last : Stream_Element_Offset;
+   begin
+      while Offset <= Data'Last loop
+         GNAT.Sockets.Send_Socket
+           (Socket, Data (Offset .. Data'Last), Sent_Last);
+         exit when Sent_Last < Offset;
+         Offset := Sent_Last + 1;
+      end loop;
+   end Plain_Write_All;
+
+   procedure Plain_Read_All
+     (Socket   : GNAT.Sockets.Socket_Type;
+      Response : out Unbounded_String) is
+      Buffer    : Stream_Element_Array (1 .. 8192);
+      Last      : Stream_Element_Offset;
+      Read_Count : Natural := 0;
+   begin
+      Response := Null_Unbounded_String;
+      loop
+         exit when not Wait_For_Data (Socket, 5);
+         GNAT.Sockets.Receive_Socket (Socket, Buffer, Last);
+         exit when Last < Buffer'First;
+         for I in 1 .. Natural (Last) loop
+            Append (Response, Character'Val (Buffer (Stream_Element_Offset (I))));
+         end loop;
+         exit when Read_Count >= 50;
+         Read_Count := Read_Count + 1;
+      end loop;
+   end Plain_Read_All;
+
     --------------------------
     --  HTTP client         --
     --------------------------
@@ -388,17 +426,21 @@ package body Langchain4a.Net is
        Extra_Headers : String := "";
        Proxy        : Proxy_Settings := (others => <>))
        return HTTP_Response
-    is
+   is
       Parsed   : constant Parsed_URL := Parse_URL (URL);
       Host     : constant String := To_String (Parsed.Host);
       Port     : constant Positive := (if Parsed.Port = 0 then 443 else Positive (Parsed.Port));
       Path     : constant String := To_String (Parsed.Path);
+      Use_TLS  : constant Boolean :=
+        (if To_String (Parsed.Scheme) = "" or else
+              To_String (Parsed.Scheme) = "https"
+         then True else False);
       Socket   : GNAT.Sockets.Socket_Type;
-      Handle   : SSL_Handle;
+      Handle   : SSL_Handle := Null_Handle;
       Resp     : HTTP_Response;
       All_Data : Unbounded_String;
-    begin
-       GNAT.Sockets.Create_Socket (Socket, Family_Inet, GNAT.Sockets.Socket_Stream);
+   begin
+      GNAT.Sockets.Create_Socket (Socket, Family_Inet, GNAT.Sockets.Socket_Stream);
 
        if Proxy.Mode = Socks5 then
           Socks5_Tunnel (Socket, To_String (Proxy.Host), Proxy.Port,
@@ -428,8 +470,10 @@ package body Langchain4a.Net is
           end;
        end if;
 
-      --  TLS handshake
-      Handle := Wrap_With_TLS (Socket, Host);
+      --  TLS handshake (HTTPS only)
+      if Use_TLS then
+         Handle := Wrap_With_TLS (Socket, Host);
+      end if;
 
        --  Build and send HTTP request
        declare
@@ -456,14 +500,25 @@ package body Langchain4a.Net is
                Req_Line & To_String (Headers)
                  & "Content-Length: " & Len_Str
                  & ASCII.CR & ASCII.LF & ASCII.CR & ASCII.LF & Data;
-              Sent_Last : Stream_Element_Offset;
-         begin
-            TLS_Write_All (Handle, To_SEA (Full_Req), Sent_Last);
-         end;
+          begin
+             if Use_TLS then
+                declare
+                   Sent_Last : Stream_Element_Offset;
+                begin
+                   TLS_Write_All (Handle, To_SEA (Full_Req), Sent_Last);
+                end;
+             else
+                Plain_Write_All (Socket, To_SEA (Full_Req));
+             end if;
+          end;
        end;
 
        --  Read full response
-       TLS_Read_All (Handle, Socket, All_Data);
+       if Use_TLS then
+          TLS_Read_All (Handle, Socket, All_Data);
+       else
+          Plain_Read_All (Socket, All_Data);
+       end if;
 
        --  Parse status code and split headers/body
        declare
@@ -500,15 +555,17 @@ package body Langchain4a.Net is
           end if;
        end;
 
-      --  Cleanup
-      declare
-         Ignored : int := SSL_shutdown (Handle);
-         pragma Unreferenced (Ignored);
-      begin
-         null;
-      end;
-      SSL_free (Handle);
-      GNAT.Sockets.Close_Socket (Socket);
+       --  Cleanup
+       if Use_TLS then
+          declare
+             Ignored : int := SSL_shutdown (Handle);
+             pragma Unreferenced (Ignored);
+          begin
+             null;
+          end;
+          SSL_free (Handle);
+       end if;
+       GNAT.Sockets.Close_Socket (Socket);
 
       return Resp;
    exception
