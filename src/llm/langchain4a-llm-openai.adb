@@ -79,6 +79,7 @@ package body Langchain4a.LLM.OpenAI is
       & " ""messages"": [{""role"": ""user"", ""content"": """ & To_String (Msg_Escaped) & """}],"
       & " ""temperature"": " & Fixed.Trim (Float'Image (Temperature), Ada.Strings.Both)
       & ", ""max_tokens"": " & Natural'Image (Max_Tokens)
+      & ", ""stream"": false"
       & "}";
    end Build_Request_Body;
 

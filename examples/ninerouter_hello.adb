@@ -35,7 +35,7 @@ procedure Ninerouter_Hello is
    Endpoint : constant String :=
      Env_Or ("NINEROUTER_ENDPOINT", "http://localhost:20128/v1/chat/completions");
    Model    : constant String :=
-     Env_Or ("NINEROUTER_MODEL", "kr/claude-sonnet-4.5");
+     Env_Or ("NINEROUTER_MODEL", "glm");
    API_Key  : constant String := Ada.Environment_Variables.Value ("NINEROUTER_API_KEY", "");
 
    Prompt_Text : constant String :=
