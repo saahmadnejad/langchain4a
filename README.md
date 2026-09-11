@@ -24,7 +24,8 @@ langchain4a/
 │   ├── memory/
 │   │   └── langchain4a-memory.ad[bs]    # Memory_Store: bounded conversation history
 │   ├── chains/
-│   │   └── langchain4a-chains.ads       # Chain (abstract) for orchestrating LLM ops
+│   │   ├── langchain4a-chains.ads       # Chain (abstract) for orchestrating LLM ops
+│   │   └── langchain4a-chains-simple.ad[bs] # Simple_Chain: template + memory loop
 │   └── net/
 │       ├── langchain4a-net.ad[bs]        # HTTP client with SOCKS5 proxy + TLS
 │       └── langchain4a-net-json.ad[bs]  # JSON extraction utilities

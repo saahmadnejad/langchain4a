@@ -56,8 +56,9 @@ package body Chains_Tests is
    overriding procedure Set_Up (T : in out Test_Fixture) is
       pragma Unreferenced (T);
    begin
-      Mock.Sent := Ada.Strings.Unbounded.Null_Unbounded_String;
+      Mock.Sent       := Ada.Strings.Unbounded.Null_Unbounded_String;
       Mock.Reply_Text := Ada.Strings.Unbounded.Null_Unbounded_String;
+      Mock.Fails      := False;
    end Set_Up;
 
    overriding procedure Tear_Down (T : in out Test_Fixture) is
