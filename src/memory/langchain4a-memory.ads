@@ -10,13 +10,8 @@ package Langchain4a.Memory is
    --  Maximum number of messages kept; oldest dropped on overflow
    Default_Max_Messages : constant := 100;
 
-   --  Store a message in memory (legacy key-value form; appends as user turn)
-   procedure Store (M : in out Memory_Store; Key, Value : String);
-
-   --  Retrieve a message from memory (legacy key-value form; returns "")
-   function Retrieve (M : Memory_Store; Key : String) return String;
-
-   --  Append a conversation message with an explicit role ("user"/"assistant")
+   --  Append a conversation message with an explicit role
+   --  ("user", "assistant", or "system"; others raise Constraint_Error)
    procedure Add_Message (M : in out Memory_Store; Role, Content : String);
 
    --  Number of stored messages

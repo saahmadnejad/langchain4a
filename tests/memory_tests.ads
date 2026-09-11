@@ -32,14 +32,14 @@ package Memory_Tests is
    procedure Given_StoreWithMessages_When_ClearCalled_Then_CountIsZero
      (T : in out Test_Fixture);
 
-   --  Legacy Store/Retrieve tests
-   procedure Given_EmptyStore_When_StoreCalled_Then_MessageAddedAsUserTurn
-     (T : in out Test_Fixture);
-   procedure Given_EmptyStore_When_RetrieveCalled_Then_EmptyStringReturned
+   --  Role validation tests
+   procedure Given_InvalidRole_When_AddMessageCalled_Then_ConstraintErrorRaised
      (T : in out Test_Fixture);
 
    --  Bounded-history tests
    procedure Given_FullStore_When_AddMessageCalled_Then_OldestDropped
+     (T : in out Test_Fixture);
+   procedure Given_StoreWithFiveMessages_When_MaxShrunkToTwo_Then_TwoNewestKept
      (T : in out Test_Fixture);
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite;

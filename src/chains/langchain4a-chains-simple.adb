@@ -1,5 +1,6 @@
 --  Simple sequential chain implementation.
 
+with Ada.Characters.Latin_1;
 with Ada.Strings.Unbounded;
 
 with Langchain4a.Memory;
@@ -24,6 +25,11 @@ package body Langchain4a.Chains.Simple is
       C.User_Input := To_Unbounded_String (Input);
    end Set_Input;
 
+   function Build_Prompt (C : Simple_Chain) return String is
+   begin
+      return Build_Prompt (C, To_String (C.User_Input));
+   end Build_Prompt;
+
    function Build_Prompt (C : Simple_Chain; Input : String) return String is
       Parts : Unbounded_String;
    begin
@@ -32,12 +38,12 @@ package body Langchain4a.Chains.Simple is
       end if;
       if C.Memory.Count > 0 then
          if Length (Parts) > 0 then
-            Append (Parts, ASCII.LF);
+            Append (Parts, Ada.Characters.Latin_1.LF);
          end if;
          Append (Parts, C.Memory.Get_History);
       end if;
       if Length (Parts) > 0 then
-         Append (Parts, ASCII.LF);
+         Append (Parts, Ada.Characters.Latin_1.LF);
       end if;
       Append (Parts, Input);
       return To_String (Parts);
@@ -50,15 +56,11 @@ package body Langchain4a.Chains.Simple is
          raise Constraint_Error with "Simple_Chain: no client configured";
       end if;
 
-      declare
-         Model : Langchain4a.Core.LLM_Model'Class renames
-           Langchain4a.Core.LLM_Model'Class (C.Client.all);
-      begin
-         Model.Send_Prompt
-           (Langchain4a.Core.Prompt (Build_Prompt (C, Input)));
-         C.Last_Output :=
-           To_Unbounded_String (To_String (Model.Get_Response.Text));
-      end;
+      --  On Send_Prompt failure the exception propagates and neither
+      --  turn is recorded: history stays untouched.
+      C.Client.Send_Prompt
+        (Langchain4a.Core.Prompt (Build_Prompt (C, Input)));
+      C.Last_Output := C.Client.Get_Response.Text;
 
       C.Memory.Add_Message ("user", Input);
       C.Memory.Add_Message ("assistant", To_String (C.Last_Output));

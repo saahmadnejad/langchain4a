@@ -21,6 +21,9 @@ package Langchain4a.Chains.Simple is
 
    --  Prompt sent to the model: Template & LF & History & LF & Input
    --  (empty sections skipped, history excludes the current input)
+   function Build_Prompt (C : Simple_Chain) return String;
+
+   --  Same, with the input given explicitly (testability / ad-hoc use)
    function Build_Prompt (C : Simple_Chain; Input : String) return String;
 
    --  Send the prompt, record user/assistant turns in memory,

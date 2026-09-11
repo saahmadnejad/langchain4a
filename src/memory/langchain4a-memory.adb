@@ -1,29 +1,17 @@
 --  Memory store implementation: bounded conversation history.
 
+with Ada.Characters.Latin_1;
 with Ada.Strings.Unbounded;
 
 package body Langchain4a.Memory is
 
    use Ada.Strings.Unbounded;
 
+   function Is_Valid_Role (Role : String) return Boolean is
+     (Role = "user" or else Role = "assistant" or else Role = "system");
+
    procedure Trim_Oldest (M : in out Memory_Store) with
      Post => Natural (M.Messages.Length) <= M.Max_Messages;
-
-   ----------
-   --  Legacy key-value API
-   ----------
-
-   procedure Store (M : in out Memory_Store; Key, Value : String) is
-      pragma Unreferenced (Key);
-   begin
-      M.Add_Message ("user", Value);
-   end Store;
-
-   function Retrieve (M : Memory_Store; Key : String) return String is
-      pragma Unreferenced (M, Key);
-   begin
-      return "";
-   end Retrieve;
 
    ----------
    --  Conversation API
@@ -31,6 +19,10 @@ package body Langchain4a.Memory is
 
    procedure Add_Message (M : in out Memory_Store; Role, Content : String) is
    begin
+      if not Is_Valid_Role (Role) then
+         raise Constraint_Error with
+           "Memory_Store: invalid role '" & Role & "'";
+      end if;
       M.Messages.Append
         (Message'(Role    => To_Unbounded_String (Role),
                   Content => To_Unbounded_String (Content)));
@@ -58,7 +50,7 @@ package body Langchain4a.Memory is
    begin
       for Msg of M.Messages loop
          if Length (Result) > 0 then
-            Append (Result, ASCII.LF);
+            Append (Result, Ada.Characters.Latin_1.LF);
          end if;
          Append (Result, To_String (Msg.Role));
          Append (Result, ": ");

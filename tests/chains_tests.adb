@@ -5,6 +5,7 @@ with AUnit.Test_Caller;
 with AUnit.Test_Fixtures;
 with AUnit.Test_Suites;
 
+with Ada.Characters.Latin_1;
 with Ada.Strings.Unbounded;
 
 with Langchain4a.Core;
@@ -24,9 +25,12 @@ package body Chains_Tests is
    --  any single test procedure.
    --------------------------------------------------------------------------
 
+   Mock_Failure : exception;
+
    type Mock_Client is new LLM_Model with record
       Sent       : Ada.Strings.Unbounded.Unbounded_String;
       Reply_Text : Ada.Strings.Unbounded.Unbounded_String;
+      Fails      : Boolean := False;
    end record;
 
    overriding procedure Send_Prompt (M : in out Mock_Client; P : Prompt);
@@ -34,6 +38,9 @@ package body Chains_Tests is
 
    overriding procedure Send_Prompt (M : in out Mock_Client; P : Prompt) is
    begin
+      if M.Fails then
+         raise Mock_Failure with "mock network failure";
+      end if;
       M.Sent := Ada.Strings.Unbounded.To_Unbounded_String (String (P));
    end Send_Prompt;
 
@@ -97,7 +104,7 @@ package body Chains_Tests is
             Result : constant String := C.Build_Prompt ("hello");
          begin
             --  Assert
-            Assert (Result = "You are terse." & ASCII.LF & "hello",
+            Assert (Result = "You are terse." & Ada.Characters.Latin_1.LF & "hello",
                     "Expected template prepended before input");
          end;
       end;
@@ -122,8 +129,8 @@ package body Chains_Tests is
             Result : constant String := C.Build_Prompt ("next question");
          begin
             --  Assert
-            Assert (Result = "user: hello" & ASCII.LF
-                    & "assistant: hi there" & ASCII.LF
+            Assert (Result = "user: hello" & Ada.Characters.Latin_1.LF
+                    & "assistant: hi there" & Ada.Characters.Latin_1.LF
                     & "next question",
                     "Expected history lines before new input");
          end;
@@ -149,9 +156,9 @@ package body Chains_Tests is
             Result : constant String := C.Build_Prompt ("next question");
          begin
             --  Assert
-            Assert (Result = "You are terse." & ASCII.LF
-                    & "user: hello" & ASCII.LF
-                    & "assistant: hi there" & ASCII.LF
+            Assert (Result = "You are terse." & Ada.Characters.Latin_1.LF
+                    & "user: hello" & Ada.Characters.Latin_1.LF
+                    & "assistant: hi there" & Ada.Characters.Latin_1.LF
                     & "next question",
                     "Expected template, history, input joined by LF");
          end;
@@ -180,7 +187,7 @@ package body Chains_Tests is
          --  Assert
          Assert (C.Get_Output = "mock reply",
                  "Expected mock reply stored as output");
-         Assert (C.Get_History = "user: hello" & ASCII.LF & "assistant: mock reply",
+         Assert (C.Get_History = "user: hello" & Ada.Characters.Latin_1.LF & "assistant: mock reply",
                  "Expected user and assistant turns in history");
       end;
    end Given_ConfiguredChain_When_RunCalled_Then_UserAndAssistantTurnsStored;
@@ -206,14 +213,14 @@ package body Chains_Tests is
          C.Run;
          --  Assert
          Assert (Ada.Strings.Unbounded.To_String (Mock.Sent) =
-                   "user: first question" & ASCII.LF
-                   & "assistant: first reply" & ASCII.LF
+                   "user: first question" & Ada.Characters.Latin_1.LF
+                   & "assistant: first reply" & Ada.Characters.Latin_1.LF
                    & "second question",
                  "Expected second prompt to contain prior history");
          Assert (C.Get_History =
-                   "user: first question" & ASCII.LF
-                   & "assistant: first reply" & ASCII.LF
-                   & "user: second question" & ASCII.LF
+                   "user: first question" & Ada.Characters.Latin_1.LF
+                   & "assistant: first reply" & Ada.Characters.Latin_1.LF
+                   & "user: second question" & Ada.Characters.Latin_1.LF
                    & "assistant: second reply",
                  "Expected four turns in history after two runs");
       end;
@@ -240,6 +247,36 @@ package body Chains_Tests is
          Assert (Raised, "Expected Constraint_Error from unconfigured Run");
       end;
    end Given_UnconfiguredChain_When_RunCalled_Then_ConstraintErrorRaised;
+
+   procedure Given_FailingClient_When_RunCalled_Then_HistoryUnchanged
+     (T : in out Test_Fixture)
+   is
+      pragma Unreferenced (T);
+   begin
+      --  Arrange
+      declare
+         C : Simple_Chain;
+         Raised : Boolean := False;
+      begin
+         Mock.Reply_Text :=
+           Ada.Strings.Unbounded.To_Unbounded_String ("should not appear");
+         C.Configure (Client => Mock'Access);
+         C.Set_Input ("hello");
+         Mock.Fails := True;
+         --  Act
+         begin
+            C.Run;
+         exception
+            when Mock_Failure => Raised := True;
+         end;
+         --  Assert
+         Assert (Raised, "Expected Send_Prompt failure to propagate");
+         Assert (C.Get_History = "",
+                 "Expected history untouched after failed Run");
+         Assert (C.Get_Output = "",
+                 "Expected output untouched after failed Run");
+      end;
+   end Given_FailingClient_When_RunCalled_Then_HistoryUnchanged;
 
    --------------------------------------------------------------------------
    --  Suite
@@ -270,6 +307,9 @@ package body Chains_Tests is
       AUnit.Test_Suites.Add_Test
         (S, Caller.Create ("Run without client raises Constraint_Error",
                            Given_UnconfiguredChain_When_RunCalled_Then_ConstraintErrorRaised'Access));
+      AUnit.Test_Suites.Add_Test
+        (S, Caller.Create ("Failed Send_Prompt leaves history unchanged",
+                           Given_FailingClient_When_RunCalled_Then_HistoryUnchanged'Access));
       return S;
    end Suite;
 
