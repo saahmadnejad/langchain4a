@@ -4,6 +4,7 @@ version = "0.1.0"
 
 authors = ["Ali Ahmadnejad"]
 maintainers = ["Ali Ahmadnejad <sa.ahmadnejad@gmail.com>"]
+maintainers-logins = ["saahmadnejad"]
 licenses = "MIT"
 tags = ["llm", "ai", "langchain", "chat", "openai"]
 website = "https://github.com/saahmadnejad/langchain4a"
