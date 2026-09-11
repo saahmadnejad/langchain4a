@@ -34,6 +34,8 @@ package Chains_Tests is
      (T : in out Test_Fixture);
    procedure Given_UnconfiguredChain_When_RunCalled_Then_ConstraintErrorRaised
      (T : in out Test_Fixture);
+   procedure Given_FailingClient_When_RunCalled_Then_HistoryUnchanged
+     (T : in out Test_Fixture);
 
    function Suite return AUnit.Test_Suites.Access_Test_Suite;
 

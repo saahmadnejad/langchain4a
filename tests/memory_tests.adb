@@ -5,6 +5,9 @@ with AUnit.Test_Caller;
 with AUnit.Test_Fixtures;
 with AUnit.Test_Suites;
 
+with Ada.Characters.Latin_1;
+with Ada.Strings.Unbounded;
+
 with Langchain4a.Memory;
 
 package body Memory_Tests is
@@ -84,7 +87,7 @@ package body Memory_Tests is
             Result : constant String := M.Get_History;
          begin
             --  Assert
-            Assert (Result = "user: hello" & ASCII.LF & "assistant: hi there",
+            Assert (Result = "user: hello" & Ada.Characters.Latin_1.LF & "assistant: hi there",
                     "Expected role-prefixed lines joined by LF");
          end;
       end;
@@ -132,10 +135,10 @@ package body Memory_Tests is
    end Given_StoreWithMessages_When_ClearCalled_Then_CountIsZero;
 
    --------------------------------------------------------------------------
-   --  Legacy Store/Retrieve tests
+   --  Role validation tests
    --------------------------------------------------------------------------
 
-   procedure Given_EmptyStore_When_StoreCalled_Then_MessageAddedAsUserTurn
+   procedure Given_InvalidRole_When_AddMessageCalled_Then_ConstraintErrorRaised
      (T : in out Test_Fixture)
    is
       pragma Unreferenced (T);
@@ -143,34 +146,19 @@ package body Memory_Tests is
       --  Arrange
       declare
          M : Memory_Store;
+         Raised : Boolean := False;
       begin
          --  Act
-         M.Store ("session-1", "remember this");
-         --  Assert
-         Assert (M.Count = 1, "Expected legacy Store to append one message");
-         Assert (M.Get_History = "user: remember this",
-                 "Expected legacy Store to append as user turn");
-      end;
-   end Given_EmptyStore_When_StoreCalled_Then_MessageAddedAsUserTurn;
-
-   procedure Given_EmptyStore_When_RetrieveCalled_Then_EmptyStringReturned
-     (T : in out Test_Fixture)
-   is
-      pragma Unreferenced (T);
-   begin
-      --  Arrange
-      declare
-         M : Memory_Store;
-      begin
-         --  Act
-         declare
-            Result : constant String := M.Retrieve ("session-1");
          begin
-            --  Assert
-            Assert (Result = "", "Expected legacy Retrieve to return empty");
+            M.Add_Message ("assitant", "typo role");
+         exception
+            when Constraint_Error => Raised := True;
          end;
+         --  Assert
+         Assert (Raised, "Expected Constraint_Error for invalid role");
+         Assert (M.Count = 0, "Expected no message stored on invalid role");
       end;
-   end Given_EmptyStore_When_RetrieveCalled_Then_EmptyStringReturned;
+   end Given_InvalidRole_When_AddMessageCalled_Then_ConstraintErrorRaised;
 
    --------------------------------------------------------------------------
    --  Bounded-history tests
@@ -186,7 +174,7 @@ package body Memory_Tests is
          M : Memory_Store;
          Small_Max : constant := 3;
       begin
-      M.Set_Max_Messages (Small_Max);
+         M.Set_Max_Messages (Small_Max);
          M.Add_Message ("user", "one");
          M.Add_Message ("user", "two");
          M.Add_Message ("user", "three");
@@ -195,11 +183,35 @@ package body Memory_Tests is
          --  Assert
          Assert (M.Count = Small_Max,
                  "Expected count capped at Max_Messages");
-         Assert (M.Get_History = "user: two" & ASCII.LF
-                 & "user: three" & ASCII.LF & "user: four",
+         Assert (M.Get_History = "user: two" & Ada.Characters.Latin_1.LF
+                 & "user: three" & Ada.Characters.Latin_1.LF & "user: four",
                  "Expected oldest message dropped on overflow");
       end;
    end Given_FullStore_When_AddMessageCalled_Then_OldestDropped;
+
+   procedure Given_StoreWithFiveMessages_When_MaxShrunkToTwo_Then_TwoNewestKept
+     (T : in out Test_Fixture)
+   is
+      pragma Unreferenced (T);
+   begin
+      --  Arrange
+      declare
+         M : Memory_Store;
+      begin
+         M.Add_Message ("user", "one");
+         M.Add_Message ("user", "two");
+         M.Add_Message ("user", "three");
+         M.Add_Message ("user", "four");
+         M.Add_Message ("user", "five");
+         --  Act
+         M.Set_Max_Messages (2);
+         --  Assert
+         Assert (M.Count = 2, "Expected count trimmed to new max");
+         Assert (M.Get_History = "user: four" & Ada.Characters.Latin_1.LF
+                 & "user: five",
+                 "Expected two newest messages kept after shrink");
+      end;
+   end Given_StoreWithFiveMessages_When_MaxShrunkToTwo_Then_TwoNewestKept;
 
    --------------------------------------------------------------------------
    --  Suite
@@ -225,14 +237,14 @@ package body Memory_Tests is
         (S, Caller.Create ("Clear resets count to zero",
                            Given_StoreWithMessages_When_ClearCalled_Then_CountIsZero'Access));
       AUnit.Test_Suites.Add_Test
-        (S, Caller.Create ("Legacy Store appends as user turn",
-                           Given_EmptyStore_When_StoreCalled_Then_MessageAddedAsUserTurn'Access));
-      AUnit.Test_Suites.Add_Test
-        (S, Caller.Create ("Legacy Retrieve returns empty",
-                           Given_EmptyStore_When_RetrieveCalled_Then_EmptyStringReturned'Access));
+        (S, Caller.Create ("Invalid role raises Constraint_Error",
+                           Given_InvalidRole_When_AddMessageCalled_Then_ConstraintErrorRaised'Access));
       AUnit.Test_Suites.Add_Test
         (S, Caller.Create ("Overflow drops oldest message",
                            Given_FullStore_When_AddMessageCalled_Then_OldestDropped'Access));
+      AUnit.Test_Suites.Add_Test
+        (S, Caller.Create ("Shrinking max keeps newest messages",
+                           Given_StoreWithFiveMessages_When_MaxShrunkToTwo_Then_TwoNewestKept'Access));
       return S;
    end Suite;
 

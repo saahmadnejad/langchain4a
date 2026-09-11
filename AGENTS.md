@@ -8,7 +8,7 @@ Every item is a fact an agent would likely miss without help.
 - **Language:** Ada 2022 (tested with FSF GNAT 14.2.0; project pins `-gnat2022`). Root package identifier must be `Langchain4a` (PascalCase, case-insensitive).
 - **Build system:** GNAT project `langchain4a.gpr`; package manager `alr`.
 - **Output:** static library `lib/liblangchain4a.a` (Object_Dir `obj/`, Library_Dir `lib/`).
-- **Stage:** early alpha (v0.1.0). `memory/` and `chains/` are stubs.
+- **Stage:** alpha (v0.1.0). `memory/` = bounded conversation history; `chains/` = `Simple_Chain` (memory loop).
 - **No CI / no `opencode.json` / no `.github`.** All verification is local: `alr build` + `./tests/run_tests.sh`.
 
 ## Build & test commands (in this order: build lib, then build+run tests)
@@ -63,8 +63,9 @@ src/
   llm/langchain4a-llm-openrouter.ad[bs] OpenRouter_Client (derives from OpenAI_Client)
   net/langchain4a-net.ad[bs]     Proxy_Settings, HTTP_Response, Perform_Request
   net/langchain4a-net-json.ad[bs]       Extract_Json_String, Extract_Json_Integer
-  memory/langchain4a-memory.ad[bs]      Memory_Store (stub)
+  memory/langchain4a-memory.ad[bs]      Memory_Store (bounded conversation history)
   chains/langchain4a-chains.ads          Chain (abstract)
+  chains/langchain4a-chains-simple.ad[bs] Simple_Chain (template + memory loop)
 examples/ninerouter_hello.adb   local 9Router gateway example (base OpenAI_Client).
 examples/openrouter_hello.adb   end-to-end example (needs OPENROUTER_API_KEY).
 ```
@@ -101,7 +102,7 @@ alr exec -- gnatmake -P examples/ninerouter_hello.gpr
 4. In `src/llm/`, create a client deriving from `OpenAI_Client` (OpenAI-compatible) and override `Build_Extra_Headers` for provider-specific headers. `Build_Request_Body` / `Store_Response` are public for testing/reuse.
 
 ### Add a chain type
-Define in `src/chains/` deriving from `Langchain4a.Chains.Chain`; override `Run`.
+Define in `src/chains/` deriving from `Langchain4a.Chains.Chain`; override `Run`. See `Simple_Chain` (`langchain4a-chains-simple.ad[bs]`) for the pattern: `Configure` with `access LLM_Model'Class` (pointee must outlive chain), `Memory_Store` embedded, `Build_Prompt` public for offline tests.
 
 ### Add a test module
 1. `tests/<module>_tests.ads`/`.adb`: fixture derived from `AUnit.Test_Fixtures.Test_Fixture`.

@@ -22,7 +22,7 @@ langchain4a/
 │   │   ├── langchain4a-llm-openai.ad[bs]     # OpenAI_Client (base)
 │   │   └── langchain4a-llm-openrouter.ad[bs] # OpenRouter_Client (subclass, extra headers)
 │   ├── memory/
-│   │   └── langchain4a-memory.ad[bs]    # Memory_Store for conversation context (stub)
+│   │   └── langchain4a-memory.ad[bs]    # Memory_Store: bounded conversation history
 │   ├── chains/
 │   │   └── langchain4a-chains.ads       # Chain (abstract) for orchestrating LLM ops
 │   └── net/
@@ -215,8 +215,8 @@ gnatmake -P my_project.gpr \
 | JSON utilities     | Implemented  | `Langchain4a.Net.JSON` extraction        |
 | OpenRouter client  | Implemented  | Full HTTP API via `Langchain4a.Net`      |
 | OpenAI client      | Implemented  | Base OpenAI-compatible client            |
-| Memory store       | Stubbed      | No-op Store/Retrieve                     |
-| Chains             | Stubbed      | Abstract base only                       |
+| Memory store       | Implemented  | Bounded conversation history             |
+| Chains             | Implemented  | `Simple_Chain` (memory loop)             |
 
 ## Development
 
